@@ -6,7 +6,8 @@ from PyQt5.QtWidgets import (QApplication, QWidget, QTabWidget, QLabel, QDesktop
                 QFormLayout, QGroupBox, QVBoxLayout)
 from PyQt5.QtGui import (QIcon, QIntValidator, QRegExpValidator, QFont)
 from PyQt5.QtCore import (QRegExp, Qt)
-import netifaces
+from PyQt5.QtNetwork import (QNetworkInterface)
+import wmi
 
 
 class Gui(QWidget):
@@ -22,7 +23,7 @@ class Gui(QWidget):
         tab.addTab(self.udp_tab(), "UDP")
         #ComboBox
         interfaces = QComboBox(self)
-        list_interfaces = netifaces.interfaces()
+        list_interfaces = self.get_interfaces()[0]
         list_interfaces.insert(0, "")
         interfaces.addItems(list_interfaces)
         interfaces.activated[str].connect(self.onActivated)
@@ -106,8 +107,9 @@ class Gui(QWidget):
         ttl_edit.setMaxLength(3)
         ttl_edit.setFixedWidth(45)
         #header checksum
-        header_checksum_lbl = QLabel("Header checksum")
+        header_checksum_checkbox = QCheckBox("Header checksum")
         header_checksum_edit = QLineEdit()
+        header_checksum_edit.setDisabled(1)
         header_checksum_edit.setFixedWidth(45)
         #source, destination
         src_lbl = QLabel("Source IP")
@@ -132,7 +134,7 @@ class Gui(QWidget):
         form.addRow(flags_lbl, flags_edit)
         form.addRow(flag_offset_lbl, flag_offset_edit)
         form.addRow(ttl_lbl, ttl_edit)
-        form.addRow(header_checksum_lbl, header_checksum_edit)
+        form.addRow(header_checksum_checkbox, header_checksum_edit)
         form.addRow(src_lbl)
         form.addRow(src_edit)
         form.addRow(dst_lbl)
@@ -144,6 +146,30 @@ class Gui(QWidget):
 
     def icmp_tab(self):
         widget = QWidget(self)
+        #ICMP type
+        type_lbl = QLabel("Type")
+        type_edit = QLineEdit()
+        type_edit.setValidator(QIntValidator(0, 255))
+        type_edit.setFixedWidth(45)
+        # code
+        code_lbl = QLabel("Code")
+        code_edit = QLineEdit()
+        code_edit.setValidator(QIntValidator(0, 15))
+        code_edit.setFixedWidth(45)
+        # checksum
+        checksum_checkbox = QCheckBox("Checksum")
+        checksum_edit = QLineEdit()
+        checksum_edit.setDisabled(1)
+        checksum_edit.setFixedWidth(45)
+        # data
+        data = QTextEdit()
+
+        form = QFormLayout()
+        form.addRow(type_lbl, type_edit)
+        form.addRow(code_lbl, code_edit)
+        form.addRow(checksum_checkbox, checksum_edit)
+        form.addRow(data)
+        widget.setLayout(form)
         return widget
 
 
@@ -194,8 +220,9 @@ class Gui(QWidget):
         win_size_edit.setValidator(QIntValidator())
         win_size_edit.setFixedWidth(45)
         # checksum
-        checksum_lbl = QLabel("Checksum")
+        checksum_checkbox = QCheckBox("Checksum")
         checksum_edit = QLineEdit()
+        checksum_edit.setDisabled(1)
         checksum_edit.setValidator(QIntValidator())
         checksum_edit.setFixedWidth(45)
         # urgent pointer
@@ -219,7 +246,7 @@ class Gui(QWidget):
         form.addRow(psh, rst)
         form.addRow(syn, fin)
         form.addRow(win_size_lbl, win_size_edit)
-        form.addRow(checksum_lbl, checksum_edit)
+        form.addRow(checksum_checkbox, checksum_edit)
         form.addRow(urgent_ptr_lbl, urgent_ptr_edit)
         form.addRow(options_edit)
         widget.setLayout(form)
@@ -228,30 +255,64 @@ class Gui(QWidget):
 
     def udp_tab(self):
         widget = QWidget(self)
-        btn = QPushButton("Button4")
-        grid = QGridLayout()
-        # grid.setSpacing(10)
-        grid.addWidget(btn, 0, 0)
-        widget.setLayout(grid)
+        # src port
+        src_port_lbl = QLabel("Source port")
+        src_port_edit = QLineEdit()
+        src_port_edit.setValidator(QIntValidator(0, 65535))
+        src_port_edit.setFixedWidth(45)
+        # dst port
+        dst_port_lbl = QLabel("Destination port")
+        dst_port_edit = QLineEdit()
+        dst_port_edit.setValidator(QIntValidator(0, 65535))
+        dst_port_edit.setFixedWidth(45)
+        # length
+        len_lbl = QLabel("Length")
+        len_edit = QLineEdit()
+        len_edit.setValidator(QIntValidator())
+        len_edit.setFixedWidth(45)
+        # checksum
+        checksum_checkbox = QCheckBox("Checksum")
+        checksum_edit = QLineEdit()
+        checksum_edit.setDisabled(1)
+        checksum_edit.setValidator(QIntValidator())
+        checksum_edit.setFixedWidth(45)
+        # data
+        data = QTextEdit()
+
+        form = QFormLayout()
+        form.addRow(src_port_lbl, src_port_edit)
+        form.addRow(dst_port_lbl, dst_port_edit)
+        form.addRow(len_lbl, len_edit)
+        form.addRow(checksum_checkbox, checksum_edit)
+        form.addRow(data)
+        widget.setLayout(form)
         return widget
 
 
     #for ComboBox
     def onActivated(self, text):
-        self.chosen_interface = text
-        try:
-            self.get_source_info(self.chosen_interface)
-        except:
-            print("Error in get_source_info, man")
+        names = self.get_interfaces()[0]
+        ip = self.get_interfaces()[1]
+        mac = self.get_interfaces()[2]
+        index = names.index(text)
+        source_ip = ip[index][0]
+        source_mac = mac[index]
+        print(source_ip)
+        print(source_mac)
 
 
-    #return ip, mac
-    def get_source_info(self, interface):
-        addrs = netifaces.ifaddresses(interface)
-        self.source_mac = addrs[netifaces.AF_INET]
-        self.source_ip = addrs[netifaces.AF_LINK]
-        print(self.source_mac[0]["addr"])
-        print(self.source_ip[0]["addr"])
+
+    def get_interfaces(self):
+        c = wmi.WMI()
+        intefsc = []
+        ip = []
+        mac = []
+        for interface in c.Win32_NetworkAdapterConfiguration (IPEnabled=1):
+            intefsc.append(interface.Description)
+            ip.append(interface.IPAddress)
+            mac.append(interface.MACAddress)
+        return intefsc, ip, mac
+            
 
     # def showDialog(self):
     #     filename = QFileDialog.getFileOpen(self, "Open File", "c://")
