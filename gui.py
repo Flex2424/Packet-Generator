@@ -3,10 +3,9 @@
 import sys
 from PyQt5.QtWidgets import (QApplication, QWidget, QTabWidget, QLabel, QDesktopWidget, QGridLayout, 
                 QPushButton, QFileDialog, QComboBox, QLineEdit, QCheckBox, QTextEdit,
-                QFormLayout, QGroupBox, QVBoxLayout)
+                QFormLayout, QGroupBox, QVBoxLayout, QLCDNumber, QSlider)
 from PyQt5.QtGui import (QIcon, QIntValidator, QRegExpValidator, QFont)
 from PyQt5.QtCore import (QRegExp, Qt)
-from PyQt5.QtNetwork import (QNetworkInterface)
 import wmi
 
 
@@ -27,13 +26,12 @@ class Gui(QWidget):
         list_interfaces.insert(0, "")
         interfaces.addItems(list_interfaces)
         interfaces.activated[str].connect(self.onActivated)
-
         grid = QGridLayout(self)
         grid.addWidget(interfaces, 1, 0, 1, 3)
         grid.addWidget(self.ip_tab(), 2, 0)
         grid.addWidget(tab, 2, 1)
-        grid.addWidget(self.settings(), 2, 3)
-        
+        grid.addWidget(self.settings_tab(), 2, 3)
+
         self.resize(500, 580)
         self.setWindowTitle("Packet Generator")
         self.setWindowIcon(QIcon("icons/Walter White Filled-50.png"))
@@ -47,16 +45,74 @@ class Gui(QWidget):
         self.move((screen.width()-size.width())/2, (screen.height()-size.height())/2)
 
 
-    def settings(self):
+    def send_packet(self):
+        
+        # for key, value in self.icmp_packet.items():
+        #     try:
+        #         if value.text() != "":
+        #             print(value.text())
+        #     except:
+        #         if value.toPlainText() != "":
+        #             print(value.toPlainText())
+        # print("\n")
+        # for key, value in self.ip_packet.items():
+        #     try:
+        #         if value.text() != "":
+        #             print(value.text())
+        #     except:
+        #         if value.toPlainText() != "":
+        #             print(value.toPlainText())
+        # print("\n")
+        # for key, value in self.tcp_packet.items():
+        #     try:
+        #         if value.text() != "":
+        #             print(value.text())
+        #     except:
+        #         if value.toPlainText() != "":
+        #             print(value.toPlainText())
+
+
+
+    def settings_tab(self):
         widget = QWidget(self)
-        grid = QGridLayout()
-        lbl = QLabel("test")
-        grid.addWidget(lbl, 0, 0)
-        widget.setLayout(grid)
+        # delay
+        lcd = QLCDNumber()
+        sld = QSlider(Qt.Horizontal)
+        sld.valueChanged.connect(lcd.display)
+        #buttons
+        load_btn = QPushButton("Load")
+        send_btn = QPushButton("Send")
+        send_btn.clicked.connect(self.send_packet)
+        save_btn = QPushButton("Save")
+        #list
+        list_edit = QTextEdit()
+
+        form = QFormLayout()
+        form.addRow(lcd)
+        form.addRow(sld)
+        form.addRow(list_edit)
+        form.addRow(load_btn)
+        form.addRow(save_btn, send_btn)
+        widget.setLayout(form)
         return widget
 
 
     def ip_tab(self):
+        self.ip_packet = {
+        "version": None,
+        "header_len": None,
+        "total_len_edit": None,
+        "identification": None,
+        "type_of_service": None,
+        "flags": None,
+        "offset": None,
+        "ttl": None,
+        "checksum": None,
+        "dst_ip": None,
+        "dst_mac": None,
+        "src_ip": None,
+        "src_mac": None
+        }
         widget = QWidget(self)
         #main label
         ip_lbl = QLabel("IP")
@@ -111,7 +167,7 @@ class Gui(QWidget):
         header_checksum_edit = QLineEdit()
         header_checksum_edit.setDisabled(1)
         header_checksum_edit.setFixedWidth(45)
-        #source, destination
+        #source, destination ip
         src_lbl = QLabel("Source IP")
         src_edit = QLineEdit()
         src_edit.setFixedWidth(100)
@@ -123,6 +179,34 @@ class Gui(QWidget):
         dst_validator = QRegExpValidator(ip_reg, dst_edit)
         src_edit.setValidator(src_validator)
         dst_edit.setValidator(dst_validator)
+        # source, dst mac addrecc
+        src_mac_lbl = QLabel("Source MAC")
+        src_mac_edit = QLineEdit()
+        src_mac_edit.setFixedWidth(125)
+        dst_mac_lbl = QLabel("Destination MAC")
+        dst_mac_edit = QLineEdit()
+        dst_mac_edit.setFixedWidth(125)
+        mac_reg = QRegExp(
+            "[0-9a-z]{2,2}\\:[0-9a-z]{2,2}\\:[0-9a-z]{2,2}\\:[0-9a-z]{2,2}\\:[0-9a-z]{2,2}\\:[0-9a-z]{2,2}"
+            )
+        src_mac_validator = QRegExpValidator(mac_reg, src_mac_edit)
+        dst_mac_validator = QRegExpValidator(mac_reg, dst_mac_edit)
+        src_mac_edit.setValidator(src_mac_validator)
+        dst_mac_edit.setValidator(dst_mac_validator)
+
+        self.ip_packet["version"] = version_edit
+        self.ip_packet["header_len"] = header_len_edit
+        self.ip_packet["total_len_edit"] = total_len_edit
+        self.ip_packet["identification"] = identification_edit
+        self.ip_packet["type_of_service"] = type_of_service_edit
+        self.ip_packet["flags"] = flags_edit
+        self.ip_packet["offset"] = flag_offset_edit
+        self.ip_packet["ttl"] = ttl_edit
+        self.ip_packet["checksum"] = header_checksum_edit
+        self.ip_packet["dst_ip"] = dst_edit
+        self.ip_packet["dst_mac"] = dst_mac_edit
+        self.ip_packet["src_ip"] = src_edit
+        self.ip_packet["src_mac"] = src_mac_edit
 
         form = QFormLayout()
         form.addRow(ip_lbl)
@@ -139,12 +223,22 @@ class Gui(QWidget):
         form.addRow(src_edit)
         form.addRow(dst_lbl)
         form.addRow(dst_edit)
+        form.addRow(src_mac_lbl)
+        form.addRow(src_mac_edit)
+        form.addRow(dst_mac_lbl)
+        form.addRow(dst_mac_edit)
 
         widget.setLayout(form)
         return widget
 
 
     def icmp_tab(self):
+        self.icmp_packet = {
+        "type": None,
+        "code": None,
+        "checksum": None,
+        "data": None
+        }
         widget = QWidget(self)
         #ICMP type
         type_lbl = QLabel("Type")
@@ -164,6 +258,12 @@ class Gui(QWidget):
         # data
         data = QTextEdit()
 
+        self.icmp_packet["type"] = type_edit
+        self.icmp_packet["code"] = code_edit
+        self.icmp_packet["checksum"] = checksum_edit
+        self.icmp_packet["data"] = data
+
+
         form = QFormLayout()
         form.addRow(type_lbl, type_edit)
         form.addRow(code_lbl, code_edit)
@@ -174,6 +274,25 @@ class Gui(QWidget):
 
 
     def tcp_tab(self):
+        self.tcp_packet = {
+        "src_port": None,
+        "dst_port": None,
+        "seq": None,
+        "ack": None,
+        "header_len": None,
+        "reserved_bits": None,
+        "cvr": None,
+        "ecn": None,
+        "urg": None,
+        "ack": None,
+        "syn": None,
+        "fin": None,
+        "psh": None,
+        "win_size": None,
+        "checksum": None,
+        "urgent": None,
+        "options": None
+        }
         widget = QWidget(self)
         # src port
         src_port_lbl = QLabel("Souce port")
@@ -234,6 +353,24 @@ class Gui(QWidget):
         # options
         options_edit = QTextEdit()
 
+        self.tcp_packet["src_port"] = src_port_edit
+        self.tcp_packet["dst_port"] = dst_port_edit
+        self.tcp_packet["seq"] = seq_edit
+        self.tcp_packet["ack"] = ack_edit
+        self.tcp_packet["header_len"] = header_len_edit
+        self.tcp_packet["reserved_bits"] = reserved_bits_edit
+        self.tcp_packet["cvr"] = cvr_checkbox
+        self.tcp_packet["ecn"] = ecn_echo_checkbox
+        self.tcp_packet["urg"] = urg
+        self.tcp_packet["ack"] = ack
+        self.tcp_packet["syn"] = syn
+        self.tcp_packet["fin"] = fin
+        self.tcp_packet["psh"] = psh
+        self.tcp_packet["win_size"] = win_size_edit
+        self.tcp_packet["checksum"] = checksum_edit
+        self.tcp_packet["urgent"] = urgent_ptr_edit
+        self.tcp_packet["options"] = options_edit
+
         form = QFormLayout()
         form.addRow(src_port_lbl, src_port_edit)
         form.addRow(dst_port_lbl, dst_port_edit)
@@ -289,17 +426,15 @@ class Gui(QWidget):
         return widget
 
 
+
     #for ComboBox
     def onActivated(self, text):
         names = self.get_interfaces()[0]
         ip = self.get_interfaces()[1]
         mac = self.get_interfaces()[2]
         index = names.index(text)
-        source_ip = ip[index][0]
-        source_mac = mac[index]
-        print(source_ip)
-        print(source_mac)
-
+        self.source_ip = ip[index][0]
+        self.source_mac = mac[index]
 
 
     def get_interfaces(self):
@@ -322,16 +457,6 @@ class Gui(QWidget):
     #     with f:        
     #         data = f.read()
     #         self.textEdit.setText(data) 
-
-
-    # def closeEvent(self, event):
-    #     reply = QMessageBox.question(self, "Why??",
-    #         "Are you sure to quit?", QMessageBox.Yes, QMessageBox.No)
-
-    #     if reply == QMessageBox.Yes:
-    #         event.accept()
-    #     else:
-    #         event.ignore()
 
 
 if __name__ == "__main__":
