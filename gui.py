@@ -57,9 +57,7 @@ class Gui(QWidget):
         else: 
             edit.setDisabled(1)
 
-
-    def send_packet(self):
-        # packing ip packet
+    def packing_ip(self):
         ip = {
             "version": None,
             "header_len": None,
@@ -126,7 +124,7 @@ class Gui(QWidget):
 
         ip["src_ip"] = self.source_ip
 
-        packet_ip = IP(
+        ip_full = IP(
             version=ip["version"], ihl=ip["header_len"], 
             #tos=ip["type_of_service"],
             len=ip["total_len_edit"],
@@ -136,15 +134,20 @@ class Gui(QWidget):
             ttl=ip["ttl"],
             chksum=ip["checksum"],
             src=ip["src_ip"],
-            dst=ip["dst_ip"])
+            dst=ip["dst_ip"]
+            )
 
-        # send(packet_ip)
+        return ip_full
 
-        # packing icmp packet
+
+    def packing_icmp(self):
         icmp = {
             "type": None,
             "code": None,
             "checksum": None,
+            "id": None,
+            "seq": None,
+            "data": None
             }
 
         if self.icmp_packet["type"][0].checkState() != 0:
@@ -162,25 +165,112 @@ class Gui(QWidget):
         else:
             icmp["checksum"] = None
 
-        # sending packet
+        if self.icmp_packet["id"].text() != "":
+            icmp["id"] = int(self.icmp_packet["id"].text())
+        else:
+            icmp["id"] = 0
 
-        packet_icmp = packet_ip/ICMP(
-            type=str(icmp["type"]),
-            code=icmp["code"],
-            chksum=icmp["checksum"])
-        send(packet_icmp)
-        print packet_icmp.show()
-        for key, value in ip.items():
-            value = None
-        for key, value in icmp.items():
-            value = None
+        if self.icmp_packet["seq"].text() != "":
+            icmp["seq"] = int(self.icmp_packet["seq"].text())
+        else:
+            icmp["seq"] = 0
+
+        flag = 0
+        if self.icmp_packet["data"].toPlainText() != "":
+            icmp["data"] = str(self.icmp_packet["data"].toPlainText())
+            flag = 1
+
+        if flag:
+            icmp_full = ICMP(
+                type=str(icmp["type"]),
+                code=icmp["code"],
+                chksum=icmp["checksum"],
+                id=icmp["id"],
+                seq=icmp["seq"]
+            )/icmp["data"]
+        else:
+            icmp_full = ICMP(
+                type=str(icmp["type"]),
+                code=icmp["code"],
+                chksum=icmp["checksum"],
+                id=icmp["id"],
+                seq=icmp["seq"]
+            )
+
+        return icmp_full
+
+
+    def packing_udp(self):
+        udp = {
+            "sport": None,
+            "dport": None,
+            "len": None,
+            "checksum": None,
+            "data": None
+            }
+        if self.udp_packet["sport"].text() != "":
+            udp["sport"] = int(self.udp_packet["sport"].text())
+        if self.udp_packet["dport"].text() != "":
+            udp["dport"] = int(self.udp_packet["dport"].text())
+        if self.udp_packet["len"].text() != "":
+            udp["len"] = int(self.udp_packet["len"].text())
+        else:
+            pass
+        if self.udp_packet["checksum"].text() != "":
+            udp["checksum"] = int(self.udp_packet["checksum"].text())
+        flag = 0
+        if self.udp_packet["data"].toPlainText() != "":
+            udp["data"] = str(self.udp_packet["data"].toPlainText())
+            flag = 1
+
+        if flag:
+            udp_full = UDP(
+                sport=udp["sport"],
+                dport=udp["dport"],
+                len=udp["len"],
+                chksum=udp["checksum"]
+                )/udp["data"]
+        else:
+            udp_full = UDP(
+                sport=udp["sport"],
+                dport=udp["dport"],
+                len=udp["len"],
+                chksum=udp["checksum"]
+                )
+
+        return udp_full
+
+
+    def packing_tcp(self):
+        tcp = {
+            "src_port": None,
+            "dst_port": None,
+            "seq": None,
+            "ack": None,
+            "header_len": None,
+            "reserved_bits": None,
+            "cvr": None,
+            "ecn": None,
+            "urg": None,
+            "ack": None,
+            "syn": None,
+            "fin": None,
+            "psh": None,
+            "win_size": None,
+            "checksum": None,
+            "urgent": None,
+            "options": None
+            }
 
 
 
-
-
-
-
+    def send_packet(self):
+        ip_full = self.packing_ip()
+        icmp_full = self.packing_icmp()
+        # udp_full = self.packing_udp()
+        main_packet = ip_full/icmp_full
+        send(main_packet)
+        print main_packet.show()
 
 
     def settings_tab(self):
@@ -362,7 +452,7 @@ class Gui(QWidget):
         # code
         code_lbl = QLabel("Code")
         code_edit = QLineEdit()
-        code_edit.setValidator(QIntValidator(0, 15))
+        code_edit.setValidator(QIntValidator())
         code_edit.setFixedWidth(45)
         # checksum
         checksum_checkbox = QCheckBox("Checksum")
@@ -385,9 +475,14 @@ class Gui(QWidget):
         seq_edit.setValidator(QIntValidator())
         seq_edit.setFixedWidth(45)
 
+        data = QTextEdit()
+
         self.icmp_packet["type"] = (echo_reply_lbl, echo_request_lbl)
         self.icmp_packet["code"] = code_edit
         self.icmp_packet["checksum"] = checksum_edit
+        self.icmp_packet["id"] = id_edit
+        self.icmp_packet["seq"] = seq_edit
+        self.icmp_packet["data"] = data
 
 
         form = QFormLayout()
@@ -396,11 +491,13 @@ class Gui(QWidget):
         form.addRow(checksum_checkbox, checksum_edit)
         form.addRow(id_lbl, id_edit)
         form.addRow(seq_lbl, seq_edit)
+        form.addRow(data)
         widget.setLayout(form)
         return widget
 
 
     def tcp_tab(self):
+
         self.tcp_packet = {
         "src_port": None,
         "dst_port": None,
@@ -521,6 +618,14 @@ class Gui(QWidget):
 
 
     def udp_tab(self):
+        self.udp_packet = {
+        "sport": None,
+        "dport": None,
+        "len": None,
+        "checksum": None,
+        "data": None
+        }
+
         widget = QWidget(self)
         # src port
         src_port_lbl = QLabel("Source port")
@@ -548,6 +653,12 @@ class Gui(QWidget):
             )
         # data
         data = QTextEdit()
+
+        self.udp_packet["sport"]  = src_port_edit
+        self.udp_packet["dport"]  = dst_port_edit
+        self.udp_packet["len"]  = len_edit
+        self.udp_packet["checksum"]  = checksum_edit
+        self.udp_packet["data"]  = data
 
         form = QFormLayout()
         form.addRow(src_port_lbl, src_port_edit)
