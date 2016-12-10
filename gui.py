@@ -47,19 +47,20 @@ class Gui(QWidget):
 
 
     def send_packet(self):
+        # packing ip packet
         ip = {
-        "version": None,
-        "header_len": None,
-        "total_len_edit": None,
-        "identification": None,
-        "type_of_service": None,
-        "flags": None,
-        "offset": None,
-        "ttl": None,
-        "checksum": None,
-        "dst_ip": None,
-        "src_ip": None
-        }
+            "version": None,
+            "header_len": None,
+            "total_len_edit": None,
+            "identification": None,
+            "type_of_service": None,
+            "flags": None,
+            "offset": None,
+            "ttl": None,
+            "checksum": None,
+            "dst_ip": None,
+            "src_ip": None
+            }
 
         if self.ip_packet["version"].text() != "":
             ip["version"] = 4
@@ -123,8 +124,34 @@ class Gui(QWidget):
             ttl=ip["ttl"], chksum=ip["checksum"],
             src=ip["src_ip"],
             dst=ip["dst_ip"])
-        send(packet_ip)
-        print packet_ip.show()
+
+        # packing icmp packet
+        icmp = {
+            "type": None,
+            "code": None,
+            "checksum": None,
+            "data": None
+            }
+
+        if self.icmp_packet["type"][0].checkState() != 0:
+            icmp["type"] = self.icmp_packet["type"][0].text()
+        elif self.icmp_packet["type"][1].checkState() != 0:
+            icmp["type"] = self.icmp_packet["type"][1].text()
+
+        if self.icmp_packet["code"].text() != "":
+            icmp["code"] = int(self.icmp_packet["code"].text())
+        else:
+            icmp["code"] = 0
+
+        # sending packet
+
+        packet_icmp = packet_ip/ICMP(type=str(icmp["type"]), code=icmp["code"])
+        send(packet_icmp)
+        print packet_icmp.show()
+        for key, value in ip.items():
+            value = None
+        for key, value in icmp.items():
+            value = None
 
 
 
@@ -302,10 +329,8 @@ class Gui(QWidget):
         }
         widget = QWidget(self)
         #ICMP type
-        type_lbl = QLabel("Type")
-        type_edit = QLineEdit()
-        type_edit.setValidator(QIntValidator(0, 255))
-        type_edit.setFixedWidth(45)
+        echo_reply_lbl = QCheckBox("echo-reply")
+        echo_request_lbl = QCheckBox("echo-request")
         # code
         code_lbl = QLabel("Code")
         code_edit = QLineEdit()
@@ -319,14 +344,14 @@ class Gui(QWidget):
         # data
         data = QTextEdit()
 
-        self.icmp_packet["type"] = type_edit
+        self.icmp_packet["type"] = (echo_reply_lbl, echo_request_lbl)
         self.icmp_packet["code"] = code_edit
         self.icmp_packet["checksum"] = checksum_edit
         self.icmp_packet["data"] = data
 
 
         form = QFormLayout()
-        form.addRow(type_lbl, type_edit)
+        form.addRow(echo_reply_lbl, echo_request_lbl)
         form.addRow(code_lbl, code_edit)
         form.addRow(checksum_checkbox, checksum_edit)
         form.addRow(data)
