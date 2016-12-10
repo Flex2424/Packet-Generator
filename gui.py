@@ -7,12 +7,13 @@ from PyQt5.QtWidgets import (QApplication, QWidget, QTabWidget, QLabel, QDesktop
 from PyQt5.QtGui import (QIcon, QIntValidator, QRegExpValidator, QFont)
 from PyQt5.QtCore import (QRegExp, Qt)
 import wmi
+from scapy.all import *
 
 
 class Gui(QWidget):
     
     def __init__(self):
-        super().__init__()
+        super(Gui, self).__init__()
         self.initUI()
         
     def initUI(self):
@@ -46,30 +47,90 @@ class Gui(QWidget):
 
 
     def send_packet(self):
-        
-        # for key, value in self.icmp_packet.items():
-        #     try:
-        #         if value.text() != "":
-        #             print(value.text())
-        #     except:
-        #         if value.toPlainText() != "":
-        #             print(value.toPlainText())
-        # print("\n")
-        # for key, value in self.ip_packet.items():
-        #     try:
-        #         if value.text() != "":
-        #             print(value.text())
-        #     except:
-        #         if value.toPlainText() != "":
-        #             print(value.toPlainText())
-        # print("\n")
-        # for key, value in self.tcp_packet.items():
-        #     try:
-        #         if value.text() != "":
-        #             print(value.text())
-        #     except:
-        #         if value.toPlainText() != "":
-        #             print(value.toPlainText())
+        ip = {
+        "version": None,
+        "header_len": None,
+        "total_len_edit": None,
+        "identification": None,
+        "type_of_service": None,
+        "flags": None,
+        "offset": None,
+        "ttl": None,
+        "checksum": None,
+        "dst_ip": None,
+        "src_ip": None
+        }
+
+        if self.ip_packet["version"].text() != "":
+            ip["version"] = 4
+        else:
+            ip["version"] = 4
+
+        if self.ip_packet["header_len"].text() != "":
+            ip["header_len"] = long(self.ip_packet["header_len"].text())
+        else:
+            ip["header_len"] = None
+
+        if self.ip_packet["total_len_edit"].text() != "":
+            ip["total_len_edit"] = int(self.ip_packet["total_len_edit"].text())
+        else:
+            ip["total_len_edit"] = None
+        #search how
+        if self.ip_packet["type_of_service"] != None:
+            ip["type_of_service"] = self.ip_packet["type_of_service"]
+        else:
+            ip["type_of_service"] = 0x0
+
+        if self.ip_packet["identification"].text() != "":
+            ip["identification"] = int(self.ip_packet["identification"].text())
+        else:
+            ip["identification"] = 1
+        #search
+        if self.ip_packet["flags"].text() != "":
+            ip["flags"] = int(self.ip_packet["flags"].text())
+        else:
+            ip["flags"] = 0
+
+        if self.ip_packet["offset"].text() != "":
+            ip["offset"] = long(self.ip_packet["offset"].text())
+        else:
+            ip["offset"] = 0L
+
+        if self.ip_packet["ttl"].text() != "":
+            ip["ttl"] = int(self.ip_packet["ttl"].text())
+        else:
+            ip["ttl"] = 64
+
+        if self.ip_packet["checksum"].text() != "":
+            ip["checksum"] = self.ip_packet["checksum"].text()
+        else:
+            ip["checksum"] = None
+
+        if self.ip_packet["dst_ip"].text() != "":
+            ip["dst_ip"] = self.ip_packet["dst_ip"].text()
+        else:
+            ip["dst_ip"] = "127.0.0.1"
+
+        ip["src_ip"] = self.source_ip
+
+        packet_ip = IP(
+            version=ip["version"], ihl=ip["header_len"], 
+            #tos=ip["type_of_service"],
+            len=ip["total_len_edit"],
+            id=ip["identification"],
+            flags=ip["flags"],
+            frag=ip["offset"],
+            ttl=ip["ttl"], chksum=ip["checksum"],
+            src=ip["src_ip"],
+            dst=ip["dst_ip"])
+        send(packet_ip)
+        print packet_ip.show()
+
+
+
+
+
+
 
 
 
