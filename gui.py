@@ -46,6 +46,18 @@ class Gui(QWidget):
         self.move((screen.width()-size.width())/2, (screen.height()-size.height())/2)
 
 
+    # enable/disable checksum field 
+    def callbackChecksum(self, checkbox, edit): 
+        return lambda: self.changeChecksumField(checkbox, edit)
+
+
+    def changeChecksumField(self, checkbox, edit):
+        if checkbox.isChecked(): 
+            edit.setDisabled(0) 
+        else: 
+            edit.setDisabled(1)
+
+
     def send_packet(self):
         # packing ip packet
         ip = {
@@ -103,7 +115,7 @@ class Gui(QWidget):
             ip["ttl"] = 64
 
         if self.ip_packet["checksum"].text() != "":
-            ip["checksum"] = self.ip_packet["checksum"].text()
+            ip["checksum"] = int(self.ip_packet["checksum"].text())
         else:
             ip["checksum"] = None
 
@@ -121,16 +133,18 @@ class Gui(QWidget):
             id=ip["identification"],
             flags=ip["flags"],
             frag=ip["offset"],
-            ttl=ip["ttl"], chksum=ip["checksum"],
+            ttl=ip["ttl"],
+            chksum=ip["checksum"],
             src=ip["src_ip"],
             dst=ip["dst_ip"])
+
+        # send(packet_ip)
 
         # packing icmp packet
         icmp = {
             "type": None,
             "code": None,
             "checksum": None,
-            "data": None
             }
 
         if self.icmp_packet["type"][0].checkState() != 0:
@@ -143,9 +157,17 @@ class Gui(QWidget):
         else:
             icmp["code"] = 0
 
+        if self.icmp_packet["checksum"].text() != "":
+            icmp["checksum"] = int(self.icmp_packet["checksum"].text())
+        else:
+            icmp["checksum"] = None
+
         # sending packet
 
-        packet_icmp = packet_ip/ICMP(type=str(icmp["type"]), code=icmp["code"])
+        packet_icmp = packet_ip/ICMP(
+            type=str(icmp["type"]),
+            code=icmp["code"],
+            chksum=icmp["checksum"])
         send(packet_icmp)
         print packet_icmp.show()
         for key, value in ip.items():
@@ -255,6 +277,10 @@ class Gui(QWidget):
         header_checksum_edit = QLineEdit()
         header_checksum_edit.setDisabled(1)
         header_checksum_edit.setFixedWidth(45)
+        header_checksum_checkbox.stateChanged.connect(
+            self.callbackChecksum(header_checksum_checkbox, header_checksum_edit)
+            )
+        #self.callbackChecksum(header_checksum_checkbox, header_checksum_edit)
         #source, destination ip
         src_lbl = QLabel("Source IP")
         src_edit = QLineEdit()
@@ -325,10 +351,12 @@ class Gui(QWidget):
         "type": None,
         "code": None,
         "checksum": None,
-        "data": None
+        "id": None,
+        "seq": None,
+        "address_mask": None
         }
         widget = QWidget(self)
-        #ICMP type
+        # ICMP type
         echo_reply_lbl = QCheckBox("echo-reply")
         echo_request_lbl = QCheckBox("echo-request")
         # code
@@ -341,20 +369,33 @@ class Gui(QWidget):
         checksum_edit = QLineEdit()
         checksum_edit.setDisabled(1)
         checksum_edit.setFixedWidth(45)
-        # data
-        data = QTextEdit()
+        checksum_checkbox.stateChanged.connect(
+            self.callbackChecksum(checksum_checkbox, checksum_edit)
+            )
+        # id
+        id_lbl = QLabel("Identificator")
+        id_edit = QLineEdit()
+        id_edit = QLineEdit()
+        id_edit.setValidator(QIntValidator())
+        id_edit.setFixedWidth(45)
+        # seq
+        seq_lbl = QLabel("Seq")
+        seq_edit = QLineEdit()
+        seq_edit = QLineEdit()
+        seq_edit.setValidator(QIntValidator())
+        seq_edit.setFixedWidth(45)
 
         self.icmp_packet["type"] = (echo_reply_lbl, echo_request_lbl)
         self.icmp_packet["code"] = code_edit
         self.icmp_packet["checksum"] = checksum_edit
-        self.icmp_packet["data"] = data
 
 
         form = QFormLayout()
         form.addRow(echo_reply_lbl, echo_request_lbl)
         form.addRow(code_lbl, code_edit)
         form.addRow(checksum_checkbox, checksum_edit)
-        form.addRow(data)
+        form.addRow(id_lbl, id_edit)
+        form.addRow(seq_lbl, seq_edit)
         widget.setLayout(form)
         return widget
 
@@ -430,6 +471,9 @@ class Gui(QWidget):
         checksum_edit.setDisabled(1)
         checksum_edit.setValidator(QIntValidator())
         checksum_edit.setFixedWidth(45)
+        checksum_checkbox.stateChanged.connect(
+            self.callbackChecksum(checksum_checkbox, checksum_edit)
+            )
         # urgent pointer
         urgent_ptr_lbl = QLabel("Urgent pointer")
         urgent_ptr_edit = QLineEdit()
@@ -499,6 +543,9 @@ class Gui(QWidget):
         checksum_edit.setDisabled(1)
         checksum_edit.setValidator(QIntValidator())
         checksum_edit.setFixedWidth(45)
+        checksum_checkbox.stateChanged.connect(
+            self.callbackChecksum(checksum_checkbox, checksum_edit)
+            )
         # data
         data = QTextEdit()
 
