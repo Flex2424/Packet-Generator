@@ -73,8 +73,8 @@ class Gui(QWidget):
     def packing_ip(self):
         ip = {
             "version": None,
-            "header_len": None,
-            "total_len_edit": None,
+            "ihl": None,
+            "len": None,
             "identification": None,
             "type_of_service": None,
             "flags": None,
@@ -82,7 +82,8 @@ class Gui(QWidget):
             "ttl": None,
             "checksum": None,
             "dst_ip": None,
-            "src_ip": None
+            "src_ip": None,
+            "daa": None
             }
 
         if self.ip_packet["version"].text() != "":
@@ -90,15 +91,15 @@ class Gui(QWidget):
         else:
             ip["version"] = 4
 
-        if self.ip_packet["header_len"].text() != "":
-            ip["header_len"] = long(self.ip_packet["header_len"].text())
+        if self.ip_packet["ihl"].text() != "":
+            ip["ihl"] = long(self.ip_packet["ihl"].text())
         else:
-            ip["header_len"] = None
+            ip["ihl"] = None
 
-        if self.ip_packet["total_len_edit"].text() != "":
-            ip["total_len_edit"] = int(self.ip_packet["total_len_edit"].text())
+        if self.ip_packet["len"].text() != "":
+            ip["len"] = int(self.ip_packet["len"].text())
         else:
-            ip["total_len_edit"] = None
+            ip["len"] = None
         #search how
         if self.ip_packet["type_of_service"] != None:
             ip["type_of_service"] = self.ip_packet["type_of_service"]
@@ -135,20 +136,43 @@ class Gui(QWidget):
         else:
             ip["dst_ip"] = "127.0.0.1"
 
-        ip["src_ip"] = self.source_ip
+        if self.ip_packet["src_ip"].text() != "":
+            ip["src_ip"] = self.ip_packet["src_ip"].text()
+        else:
+            ip["src_ip"] = self.source_ip
 
-        ip_full = IP(
-            version=ip["version"], ihl=ip["header_len"], 
-            #tos=ip["type_of_service"],
-            len=ip["total_len_edit"],
-            id=ip["identification"],
-            flags=ip["flags"],
-            frag=ip["offset"],
-            ttl=ip["ttl"],
-            chksum=ip["checksum"],
-            src=ip["src_ip"],
-            dst=ip["dst_ip"]
-            )
+        flag = 0
+        if self.ip_packet["data"].toPlainText() != "":
+            ip["data"]  = str(self.ip_packet["data"].toPlainText())
+            flag = 1       
+
+        if flag:
+            ip_full = IP(
+                version=ip["version"],
+                ihl=ip["ihl"], 
+                #tos=ip["type_of_service"],
+                len=ip["len"],
+                id=ip["identification"],
+                flags=ip["flags"],
+                frag=ip["offset"],
+                ttl=ip["ttl"],
+                chksum=ip["checksum"],
+                src=ip["src_ip"],
+                dst=ip["dst_ip"],
+                )/ip["data"]
+        else:
+            ip_full = IP(
+                version=ip["version"], ihl=ip["ihl"], 
+                #tos=ip["type_of_service"],
+                len=ip["len"],
+                id=ip["identification"],
+                flags=ip["flags"],
+                frag=ip["offset"],
+                ttl=ip["ttl"],
+                chksum=ip["checksum"],
+                src=ip["src_ip"],
+                dst=ip["dst_ip"]
+                )
 
         return ip_full
 
@@ -256,25 +280,96 @@ class Gui(QWidget):
 
     def packing_tcp(self):
         tcp = {
-            "src_port": None,
-            "dst_port": None,
+            "sport": None,
+            "dport": None,
             "seq": None,
-            "ack": None,
-            "header_len": None,
+            "ack_num": None,
+            # "header_len": None,
             "reserved_bits": None,
-            "cvr": None,
-            "ecn": None,
-            "urg": None,
-            "ack": None,
-            "syn": None,
-            "fin": None,
-            "psh": None,
+            "flags": None,
             "win_size": None,
             "checksum": None,
             "urgent": None,
-            "options": None
+            "data": None
             }
 
+
+        if self.tcp_packet["sport"].text() != "":
+            tcp["sport"] = int(self.tcp_packet["sport"].text())
+        else:
+            tcp["sport"] = None
+        if self.tcp_packet["dport"].text() != "":
+            tcp["dport"] = int(self.tcp_packet["dport"].text())
+        else:
+            tcp["dport"] = None
+        if self.tcp_packet["seq"].text() != "":
+            tcp["seq"] = int(self.tcp_packet["seq"].text())
+        else:
+            tcp["seq"] = None
+        if self.tcp_packet["ack_num"].text() != "":
+            tcp["ack_num"] = int(self.tcp_packet["ack_num"].text())
+        else:
+            tcp["ack_num"] = None
+        if self.tcp_packet["reserved_bits"].text() != "":
+            tcp["reserved_bits"] = int(self.tcp_packet["reserved_bits"].text())
+        else:
+            tcp["reserved_bits"] = None
+        if self.tcp_packet["cvr"].checkState() == 2:
+            tcp["flags"] = "C"
+        if self.tcp_packet["ecn"].checkState() == 2:
+            tcp["flags"] = "E"
+        if self.tcp_packet["urg"].checkState() == 2:
+            tcp["flags"] = "U"
+        if self.tcp_packet["syn"].checkState() == 2:
+            tcp["flags"] = "S"
+        if self.tcp_packet["ack"].checkState() == 2:
+            tcp["flags"] = "A"
+        if self.tcp_packet["fin"].checkState() == 2:
+            tcp["flags"] = "F"
+        if self.tcp_packet["psh"].checkState() == 2:
+            tcp["flags"] = "P"
+        if self.tcp_packet["rst"].checkState() == 2:
+            tcp["flags"] = "R"
+        #if not flag => make SYN flag
+        if tcp["flags"] == None:
+            tcp["flags"] = "S"
+
+        if self.tcp_packet["win_size"].text() != "":
+            tcp["win_size"] = int(self.tcp_packet["win_size"].text())
+        else:
+            tcp["win_size"] = None
+
+        if self.tcp_packet["checksum"].text() != "":
+            tcp["checksum"] = int(self.tcp_packet["checksum"].text())
+
+        flag = 0
+        if self.tcp_packet["data"].toPlainText() != "":
+            tcp["data"] = str(self.tcp_packet["data"].toPlainText())
+            flag = 1
+
+
+        if flag:
+            tcp_full = TCP(
+                sport=tcp["sport"],
+                dport=tcp["dport"],
+                seq=tcp["seq"],
+                ack=tcp["ack_num"],
+                flags=tcp["flags"],
+                window=tcp["win_size"],
+                chksum=tcp["checksum"]
+                )/tcp["data"]
+        else:
+            tcp_full = TCP(
+                sport=tcp["sport"],
+                dport=tcp["dport"],
+                seq=tcp["seq"],
+                ack=tcp["ack_num"],
+                flags=tcp["flags"],
+                window=tcp["win_size"],
+                chksum=tcp["checksum"]
+                )
+
+        return tcp_full
 
 
     def send_packet(self):
@@ -323,8 +418,8 @@ class Gui(QWidget):
     def ip_left_tab(self):
         self.ip_packet = {
         "version": None,
-        "header_len": None,
-        "total_len_edit": None,
+        "ihl": None,
+        "len": None,
         "identification": None,
         "type_of_service": None,
         "flags": None,
@@ -332,9 +427,10 @@ class Gui(QWidget):
         "ttl": None,
         "checksum": None,
         "dst_ip": None,
-        "dst_mac": None,
+        # "dst_mac": None,
         "src_ip": None,
-        "src_mac": None
+        # "src_mac": None,
+        "data": None
         }
         widget = QWidget(self)
         #main label
@@ -349,17 +445,17 @@ class Gui(QWidget):
         version_edit.setMaxLength(1)
         version_edit.setFixedWidth(20)
         # header length
-        header_len_lbl = QLabel("Header length")
-        header_len_edit = QLineEdit()
-        header_len_edit.setValidator(QIntValidator())
-        header_len_edit.setMaxLength(2)
-        header_len_edit.setFixedWidth(30)
+        ihl_lbl = QLabel("IHL")
+        ihl_edit = QLineEdit()
+        ihl_edit.setValidator(QIntValidator())
+        ihl_edit.setMaxLength(2)
+        ihl_edit.setFixedWidth(30)
         # total length
-        total_len_lbl = QLabel("Total length")
-        total_len_edit = QLineEdit()
-        total_len_edit.setValidator(QIntValidator())
-        total_len_edit.setMaxLength(5)
-        total_len_edit.setFixedWidth(45)
+        len_lbl = QLabel("Total length")
+        len_edit = QLineEdit()
+        len_edit.setValidator(QIntValidator())
+        len_edit.setMaxLength(5)
+        len_edit.setFixedWidth(45)
         # identification
         identification_lbl = QLabel("Identification")
         identification_edit = QLineEdit()
@@ -406,23 +502,25 @@ class Gui(QWidget):
         src_edit.setValidator(src_validator)
         dst_edit.setValidator(dst_validator)
         # source, dst mac addrecc
-        src_mac_lbl = QLabel("Source MAC")
-        src_mac_edit = QLineEdit()
-        src_mac_edit.setFixedWidth(125)
-        dst_mac_lbl = QLabel("Destination MAC")
-        dst_mac_edit = QLineEdit()
-        dst_mac_edit.setFixedWidth(125)
-        mac_reg = QRegExp(
-            "[0-9a-z]{2,2}\\:[0-9a-z]{2,2}\\:[0-9a-z]{2,2}\\:[0-9a-z]{2,2}\\:[0-9a-z]{2,2}\\:[0-9a-z]{2,2}"
-            )
-        src_mac_validator = QRegExpValidator(mac_reg, src_mac_edit)
-        dst_mac_validator = QRegExpValidator(mac_reg, dst_mac_edit)
-        src_mac_edit.setValidator(src_mac_validator)
-        dst_mac_edit.setValidator(dst_mac_validator)
+        # src_mac_lbl = QLabel("Source MAC")
+        # src_mac_edit = QLineEdit()
+        # src_mac_edit.setFixedWidth(125)
+        # dst_mac_lbl = QLabel("Destination MAC")
+        # dst_mac_edit = QLineEdit()
+        # dst_mac_edit.setFixedWidth(125)
+        # mac_reg = QRegExp(
+        #     "[0-9a-z]{2,2}\\:[0-9a-z]{2,2}\\:[0-9a-z]{2,2}\\:[0-9a-z]{2,2}\\:[0-9a-z]{2,2}\\:[0-9a-z]{2,2}"
+        #     )
+        # src_mac_validator = QRegExpValidator(mac_reg, src_mac_edit)
+        # dst_mac_validator = QRegExpValidator(mac_reg, dst_mac_edit)
+        # src_mac_edit.setValidator(src_mac_validator)
+        # dst_mac_edit.setValidator(dst_mac_validator)
+
+        data = QTextEdit()
 
         self.ip_packet["version"] = version_edit
-        self.ip_packet["header_len"] = header_len_edit
-        self.ip_packet["total_len_edit"] = total_len_edit
+        self.ip_packet["ihl"] = ihl_edit
+        self.ip_packet["len"] = len_edit
         self.ip_packet["identification"] = identification_edit
         self.ip_packet["type_of_service"] = type_of_service_edit
         self.ip_packet["flags"] = flags_edit
@@ -430,15 +528,16 @@ class Gui(QWidget):
         self.ip_packet["ttl"] = ttl_edit
         self.ip_packet["checksum"] = header_checksum_edit
         self.ip_packet["dst_ip"] = dst_edit
-        self.ip_packet["dst_mac"] = dst_mac_edit
+        # self.ip_packet["dst_mac"] = dst_mac_edit
         self.ip_packet["src_ip"] = src_edit
-        self.ip_packet["src_mac"] = src_mac_edit
+        # self.ip_packet["src_mac"] = src_mac_edit
+        self.ip_packet["data"] = data
 
         form = QFormLayout()
         form.addRow(ip_lbl)
         form.addRow(version_lbl, version_edit)
-        form.addRow(header_len_lbl, header_len_edit)
-        form.addRow(total_len_lbl, total_len_edit)
+        form.addRow(ihl_lbl, ihl_edit)
+        form.addRow(len_lbl, len_edit)
         form.addRow(type_of_service_lbl, type_of_service_edit)
         form.addRow(identification_lbl, identification_edit)
         form.addRow(flags_lbl, flags_edit)
@@ -449,10 +548,11 @@ class Gui(QWidget):
         form.addRow(src_edit)
         form.addRow(dst_lbl)
         form.addRow(dst_edit)
-        form.addRow(src_mac_lbl)
-        form.addRow(src_mac_edit)
-        form.addRow(dst_mac_lbl)
-        form.addRow(dst_mac_edit)
+        # form.addRow(src_mac_lbl)
+        # form.addRow(src_mac_edit)
+        # form.addRow(dst_mac_lbl)
+        # form.addRow(dst_mac_edit)
+        form.addRow(data)
 
         widget.setLayout(form)
         return widget
@@ -531,10 +631,10 @@ class Gui(QWidget):
     def tcp_tab(self):
 
         self.tcp_packet = {
-        "src_port": None,
-        "dst_port": None,
+        "sport": None,
+        "dport": None,
         "seq": None,
-        "ack": None,
+        "ack_num": None,
         "header_len": None,
         "reserved_bits": None,
         "cvr": None,
@@ -544,10 +644,11 @@ class Gui(QWidget):
         "syn": None,
         "fin": None,
         "psh": None,
+        "rst": None,
         "win_size": None,
         "checksum": None,
         "urgent": None,
-        "options": None
+        "data": None
         }
         widget = QWidget(self)
         # src port
@@ -610,12 +711,12 @@ class Gui(QWidget):
         urgent_ptr_edit.setFixedWidth(45)
         urgent_ptr_edit.setDisabled(1)
         # options
-        options_edit = QTextEdit()
+        data = QTextEdit()
 
-        self.tcp_packet["src_port"] = src_port_edit
-        self.tcp_packet["dst_port"] = dst_port_edit
+        self.tcp_packet["sport"] = src_port_edit
+        self.tcp_packet["dport"] = dst_port_edit
         self.tcp_packet["seq"] = seq_edit
-        self.tcp_packet["ack"] = ack_edit
+        self.tcp_packet["ack_num"] = ack_edit
         self.tcp_packet["header_len"] = header_len_edit
         self.tcp_packet["reserved_bits"] = reserved_bits_edit
         self.tcp_packet["cvr"] = cvr_checkbox
@@ -625,10 +726,11 @@ class Gui(QWidget):
         self.tcp_packet["syn"] = syn
         self.tcp_packet["fin"] = fin
         self.tcp_packet["psh"] = psh
+        self.tcp_packet["rst"] = rst
         self.tcp_packet["win_size"] = win_size_edit
         self.tcp_packet["checksum"] = checksum_edit
         self.tcp_packet["urgent"] = urgent_ptr_edit
-        self.tcp_packet["options"] = options_edit
+        self.tcp_packet["data"] = data
 
         form = QFormLayout()
         form.addRow(src_port_lbl, src_port_edit)
@@ -644,7 +746,7 @@ class Gui(QWidget):
         form.addRow(win_size_lbl, win_size_edit)
         form.addRow(checksum_checkbox, checksum_edit)
         form.addRow(urgent_ptr_lbl, urgent_ptr_edit)
-        form.addRow(options_edit)
+        form.addRow(data)
         widget.setLayout(form)
         return widget
 
