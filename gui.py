@@ -4,7 +4,7 @@ import sys
 from PyQt5.QtWidgets import (QApplication, QWidget, QTabWidget, QLabel, QDesktopWidget, QGridLayout, 
                 QPushButton, QFileDialog, QComboBox, QLineEdit, QCheckBox, QTextEdit,
                 QFormLayout, QGroupBox, QVBoxLayout, QLCDNumber, QSlider)
-from PyQt5.QtGui import (QIcon, QIntValidator, QRegExpValidator, QFont)
+from PyQt5.QtGui import (QIcon, QIntValidator, QRegExpValidator, QFont, QPixmap)
 from PyQt5.QtCore import (QRegExp, Qt)
 import wmi
 from scapy.all import *
@@ -18,9 +18,13 @@ class Gui(QWidget):
         
     def initUI(self):
         tab = QTabWidget()
+        tab.addTab(self.ip_right_tab(), "IP")
         tab.addTab(self.icmp_tab(), "ICMP")
         tab.addTab(self.tcp_tab(), "TCP")
         tab.addTab(self.udp_tab(), "UDP")
+        tab.currentChanged[int].connect(self.callback_current_tab(tab))
+        # 0 - ip, 1 - icmp, 2 - tcp, 3 - udp
+        self.current_tab = 0
         #ComboBox
         interfaces = QComboBox(self)
         list_interfaces = self.get_interfaces()[0]
@@ -29,7 +33,7 @@ class Gui(QWidget):
         interfaces.activated[str].connect(self.onActivated)
         grid = QGridLayout(self)
         grid.addWidget(interfaces, 1, 0, 1, 3)
-        grid.addWidget(self.ip_tab(), 2, 0)
+        grid.addWidget(self.ip_left_tab(), 2, 0)
         grid.addWidget(tab, 2, 1)
         grid.addWidget(self.settings_tab(), 2, 3)
 
@@ -44,6 +48,15 @@ class Gui(QWidget):
         screen = QDesktopWidget().screenGeometry()
         size =  self.geometry()
         self.move((screen.width()-size.width())/2, (screen.height()-size.height())/2)
+
+
+    # current tab
+    def callback_current_tab(self, tab):
+        return lambda: self.get_current_tab(tab)
+
+
+    def get_current_tab(self, tab):
+        self.current_tab = tab.currentIndex()
 
 
     # enable/disable checksum field 
@@ -266,9 +279,19 @@ class Gui(QWidget):
 
     def send_packet(self):
         ip_full = self.packing_ip()
-        icmp_full = self.packing_icmp()
-        # udp_full = self.packing_udp()
-        main_packet = ip_full/icmp_full
+        protocol = None
+        if self.current_tab == 0:
+            main_packet = ip_full
+            send(main_packet)
+            print main_packet.show()
+            return
+        elif self.current_tab == 1:
+            protocol = self.packing_icmp()
+        elif self.current_tab == 2:
+            protocol = self.packing_tcp()
+        elif self.current_tab == 3:
+            protocol = self.packing_udp()
+        main_packet = ip_full/protocol
         send(main_packet)
         print main_packet.show()
 
@@ -297,7 +320,7 @@ class Gui(QWidget):
         return widget
 
 
-    def ip_tab(self):
+    def ip_left_tab(self):
         self.ip_packet = {
         "version": None,
         "header_len": None,
@@ -370,7 +393,6 @@ class Gui(QWidget):
         header_checksum_checkbox.stateChanged.connect(
             self.callbackChecksum(header_checksum_checkbox, header_checksum_edit)
             )
-        #self.callbackChecksum(header_checksum_checkbox, header_checksum_edit)
         #source, destination ip
         src_lbl = QLabel("Source IP")
         src_edit = QLineEdit()
@@ -432,6 +454,16 @@ class Gui(QWidget):
         form.addRow(dst_mac_lbl)
         form.addRow(dst_mac_edit)
 
+        widget.setLayout(form)
+        return widget
+
+    def ip_right_tab(self):
+        widget = QWidget(self)
+        lbl = QLabel()
+        pixmap = QPixmap("icons/Binary File Filled-50.png")
+        lbl.setPixmap(pixmap)
+        form = QFormLayout()
+        form.addRow(lbl)
         widget.setLayout(form)
         return widget
 
