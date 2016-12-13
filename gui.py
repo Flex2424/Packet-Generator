@@ -25,6 +25,7 @@ class Gui(QWidget):
         tab.currentChanged[int].connect(self.callback_current_tab(tab))
         # 0 - ip, 1 - icmp, 2 - tcp, 3 - udp
         self.current_tab = 0
+        self.tos_bit = None
         #ComboBox
         interfaces = QComboBox(self)
         list_interfaces = self.get_interfaces()[0]
@@ -101,10 +102,24 @@ class Gui(QWidget):
         else:
             ip["len"] = None
         #search how
-        if self.ip_packet["type_of_service"] != None:
-            ip["type_of_service"] = self.ip_packet["type_of_service"]
-        else:
-            ip["type_of_service"] = 0x0
+        if self.tos_bit == "":
+            ip["type_of_service"] = 0x00
+        elif self.tos_bit == "0":
+            ip["type_of_service"] = 0x01
+        elif self.tos_bit == "1":
+            ip["type_of_service"] = 0x02
+        elif self.tos_bit == "2":
+            ip["type_of_service"] = 0x04
+        elif self.tos_bit == "3":
+            ip["type_of_service"] = 0x08
+        elif self.tos_bit == "4":
+            ip["type_of_service"] = 0x10
+        elif self.tos_bit == "5":
+            ip["type_of_service"] = 0x20
+        elif self.tos_bit == "6":
+            ip["type_of_service"] = 0x40
+        elif self.tos_bit == "7":
+            ip["type_of_service"] = 0x80
 
         if self.ip_packet["id"].text() != "":
             ip["id"] = int(self.ip_packet["id"].text())
@@ -152,7 +167,7 @@ class Gui(QWidget):
             ip_full = IP(
                 version=ip["version"],
                 ihl=ip["ihl"], 
-                #tos=ip["type_of_service"],
+                tos=ip["type_of_service"],
                 len=ip["len"],
                 id=ip["id"],
                 flags=ip["flags"],
@@ -165,7 +180,7 @@ class Gui(QWidget):
         else:
             ip_full = IP(
                 version=ip["version"], ihl=ip["ihl"], 
-                #tos=ip["type_of_service"],
+                tos=ip["type_of_service"],
                 len=ip["len"],
                 id=ip["id"],
                 flags=ip["flags"],
@@ -356,6 +371,11 @@ class Gui(QWidget):
         if self.tcp_packet["checksum"].text() != "":
             tcp["checksum"] = int(self.tcp_packet["checksum"].text())
 
+        if self.tcp_packet["urgent"].text() != "":
+            tcp["urgent"] = int(self.tcp_packet["urgent"].text())
+        else:
+            tcp["urgent"] = None
+
         flag = 0
         if self.tcp_packet["data"].toPlainText() != "":
             tcp["data"] = str(self.tcp_packet["data"].toPlainText())
@@ -370,7 +390,8 @@ class Gui(QWidget):
                 ack=tcp["ack_num"],
                 flags=tcp["flags"],
                 window=tcp["win_size"],
-                chksum=tcp["checksum"]
+                chksum=tcp["checksum"],
+                urgptr=tcp["urgent"]
                 )/tcp["data"]
         else:
             tcp_full = TCP(
@@ -380,7 +401,8 @@ class Gui(QWidget):
                 ack=tcp["ack_num"],
                 flags=tcp["flags"],
                 window=tcp["win_size"],
-                chksum=tcp["checksum"]
+                chksum=tcp["checksum"],
+                urgptr=tcp["urgent"]
                 )
 
         return tcp_full
@@ -441,9 +463,7 @@ class Gui(QWidget):
         "ttl": None,
         "checksum": None,
         "dst_ip": None,
-        # "dst_mac": None,
         "src_ip": None,
-        # "src_mac": None,
         "data": None
         }
         widget = QWidget(self)
@@ -476,9 +496,11 @@ class Gui(QWidget):
         id_edit.setFixedWidth(45)
         id_edit.setValidator(QIntValidator())
         # type of service
-        type_of_service_lbl = QLabel("Type of service")
-        type_of_service_edit = QLineEdit()
-        type_of_service_edit.setFixedWidth(45)
+        type_of_service = QComboBox()
+        tmp_lst = [str(i) for i in range(8)]
+        tmp_lst.insert(0, "")
+        type_of_service.addItems(tmp_lst)
+        type_of_service.activated[str].connect(self.choose_tos)
         # flags
         rb = QCheckBox("Reserved")
         mf = QCheckBox("MF")
@@ -519,7 +541,6 @@ class Gui(QWidget):
         self.ip_packet["ihl"] = ihl_edit
         self.ip_packet["len"] = len_edit
         self.ip_packet["id"] = id_edit
-        self.ip_packet["type_of_service"] = type_of_service_edit
         self.ip_packet["flags"] = (rb, mf, df)
         self.ip_packet["offset"] = flag_offset_edit
         self.ip_packet["ttl"] = ttl_edit
@@ -532,8 +553,8 @@ class Gui(QWidget):
         form.addRow(ip_lbl)
         form.addRow(version_lbl, version_edit)
         form.addRow(ihl_lbl, ihl_edit)
+        form.addRow(QLabel("Type Of Service"), type_of_service)
         form.addRow(len_lbl, len_edit)
-        form.addRow(type_of_service_lbl, type_of_service_edit)
         form.addRow(id_lbl, id_edit)
         form.addRow(rb)
         form.addRow(mf, df)
@@ -702,6 +723,11 @@ class Gui(QWidget):
         urgent_ptr_edit.setValidator(QIntValidator())
         urgent_ptr_edit.setFixedWidth(45)
         urgent_ptr_edit.setDisabled(1)
+        # if URG swithed ON
+        urg.stateChanged.connect(
+            self.callbackChecksum(urg, urgent_ptr_edit)
+            )
+        #----------------------
         # options
         data = QTextEdit()
 
@@ -805,6 +831,12 @@ class Gui(QWidget):
         index = names.index(text)
         self.source_ip = ip[index][0]
         self.source_mac = mac[index]
+
+
+    #for ip flags
+    def choose_tos(self, text):
+        self.tos_bit = text
+
 
 
     def get_interfaces(self):
