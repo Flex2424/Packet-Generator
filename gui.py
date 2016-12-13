@@ -75,7 +75,7 @@ class Gui(QWidget):
             "version": None,
             "ihl": None,
             "len": None,
-            "identification": None,
+            "id": None,
             "type_of_service": None,
             "flags": None,
             "offset": None,
@@ -83,7 +83,7 @@ class Gui(QWidget):
             "checksum": None,
             "dst_ip": None,
             "src_ip": None,
-            "daa": None
+            "data": None
             }
 
         if self.ip_packet["version"].text() != "":
@@ -106,15 +106,17 @@ class Gui(QWidget):
         else:
             ip["type_of_service"] = 0x0
 
-        if self.ip_packet["identification"].text() != "":
-            ip["identification"] = int(self.ip_packet["identification"].text())
+        if self.ip_packet["id"].text() != "":
+            ip["id"] = int(self.ip_packet["id"].text())
         else:
-            ip["identification"] = 1
-        #search
-        if self.ip_packet["flags"].text() != "":
-            ip["flags"] = int(self.ip_packet["flags"].text())
-        else:
+            ip["id"] = 1
+
+        if self.ip_packet["flags"][0].checkState() != 0:
             ip["flags"] = 0
+        elif self.ip_packet["flags"][1].checkState() != 0:
+            ip["flags"] = 1
+        elif self.ip_packet["flags"][2].checkState() != 0:
+            ip["flags"] = 2
 
         if self.ip_packet["offset"].text() != "":
             ip["offset"] = long(self.ip_packet["offset"].text())
@@ -152,7 +154,7 @@ class Gui(QWidget):
                 ihl=ip["ihl"], 
                 #tos=ip["type_of_service"],
                 len=ip["len"],
-                id=ip["identification"],
+                id=ip["id"],
                 flags=ip["flags"],
                 frag=ip["offset"],
                 ttl=ip["ttl"],
@@ -165,7 +167,7 @@ class Gui(QWidget):
                 version=ip["version"], ihl=ip["ihl"], 
                 #tos=ip["type_of_service"],
                 len=ip["len"],
-                id=ip["identification"],
+                id=ip["id"],
                 flags=ip["flags"],
                 frag=ip["offset"],
                 ttl=ip["ttl"],
@@ -286,13 +288,24 @@ class Gui(QWidget):
             "ack_num": None,
             # "header_len": None,
             "reserved_bits": None,
-            "flags": None,
+            "flags": 0,
             "win_size": None,
             "checksum": None,
             "urgent": None,
             "data": None
             }
+        print "was here0"
 
+        FIN = 0x01
+        SYN = 0x02
+        RST = 0x04
+        PSH = 0x08
+        ACK = 0x10
+        URG = 0x20
+        ECE = 0x40
+        CWR = 0x80
+
+        print "was here"
 
         if self.tcp_packet["sport"].text() != "":
             tcp["sport"] = int(self.tcp_packet["sport"].text())
@@ -314,25 +327,26 @@ class Gui(QWidget):
             tcp["reserved_bits"] = int(self.tcp_packet["reserved_bits"].text())
         else:
             tcp["reserved_bits"] = None
+
         if self.tcp_packet["cvr"].checkState() == 2:
-            tcp["flags"] = "C"
+            tcp["flags"] += CWR
         if self.tcp_packet["ecn"].checkState() == 2:
-            tcp["flags"] = "E"
+            tcp["flags"] += ECE
         if self.tcp_packet["urg"].checkState() == 2:
-            tcp["flags"] = "U"
+            tcp["flags"] += URG
         if self.tcp_packet["syn"].checkState() == 2:
-            tcp["flags"] = "S"
+            tcp["flags"] += SYN
         if self.tcp_packet["ack"].checkState() == 2:
-            tcp["flags"] = "A"
+            tcp["flags"] += ACK
         if self.tcp_packet["fin"].checkState() == 2:
-            tcp["flags"] = "F"
+            tcp["flags"] += FIN
         if self.tcp_packet["psh"].checkState() == 2:
-            tcp["flags"] = "P"
+            tcp["flags"] += PSH
         if self.tcp_packet["rst"].checkState() == 2:
-            tcp["flags"] = "R"
+            tcp["flags"] += RST
         #if not flag => make SYN flag
-        if tcp["flags"] == None:
-            tcp["flags"] = "S"
+        if tcp["flags"] == 0:
+            tcp["flags"] = SYN
 
         if self.tcp_packet["win_size"].text() != "":
             tcp["win_size"] = int(self.tcp_packet["win_size"].text())
@@ -377,7 +391,7 @@ class Gui(QWidget):
         protocol = None
         if self.current_tab == 0:
             main_packet = ip_full
-            send(main_packet)
+            sendp(Ether()/(main_packet))
             print main_packet.show()
             return
         elif self.current_tab == 1:
@@ -420,7 +434,7 @@ class Gui(QWidget):
         "version": None,
         "ihl": None,
         "len": None,
-        "identification": None,
+        "id": None,
         "type_of_service": None,
         "flags": None,
         "offset": None,
@@ -457,20 +471,18 @@ class Gui(QWidget):
         len_edit.setMaxLength(5)
         len_edit.setFixedWidth(45)
         # identification
-        identification_lbl = QLabel("Identification")
-        identification_edit = QLineEdit()
-        identification_edit.setFixedWidth(45)
-        identification_edit.setValidator(QIntValidator())
+        id_lbl = QLabel("ID")
+        id_edit = QLineEdit()
+        id_edit.setFixedWidth(45)
+        id_edit.setValidator(QIntValidator())
         # type of service
         type_of_service_lbl = QLabel("Type of service")
         type_of_service_edit = QLineEdit()
         type_of_service_edit.setFixedWidth(45)
         # flags
-        flags_lbl = QLabel("Flags")
-        flags_edit = QLineEdit()
-        flags_edit.setValidator(QIntValidator(0, 2))
-        flags_edit.setMaxLength(1)
-        flags_edit.setFixedWidth(45)
+        rb = QCheckBox("Reserved")
+        mf = QCheckBox("MF")
+        df = QCheckBox("DF")
         # flag offset
         flag_offset_lbl = QLabel("Flag offset")
         flag_offset_edit = QLineEdit()
@@ -501,36 +513,19 @@ class Gui(QWidget):
         dst_validator = QRegExpValidator(ip_reg, dst_edit)
         src_edit.setValidator(src_validator)
         dst_edit.setValidator(dst_validator)
-        # source, dst mac addrecc
-        # src_mac_lbl = QLabel("Source MAC")
-        # src_mac_edit = QLineEdit()
-        # src_mac_edit.setFixedWidth(125)
-        # dst_mac_lbl = QLabel("Destination MAC")
-        # dst_mac_edit = QLineEdit()
-        # dst_mac_edit.setFixedWidth(125)
-        # mac_reg = QRegExp(
-        #     "[0-9a-z]{2,2}\\:[0-9a-z]{2,2}\\:[0-9a-z]{2,2}\\:[0-9a-z]{2,2}\\:[0-9a-z]{2,2}\\:[0-9a-z]{2,2}"
-        #     )
-        # src_mac_validator = QRegExpValidator(mac_reg, src_mac_edit)
-        # dst_mac_validator = QRegExpValidator(mac_reg, dst_mac_edit)
-        # src_mac_edit.setValidator(src_mac_validator)
-        # dst_mac_edit.setValidator(dst_mac_validator)
-
         data = QTextEdit()
 
         self.ip_packet["version"] = version_edit
         self.ip_packet["ihl"] = ihl_edit
         self.ip_packet["len"] = len_edit
-        self.ip_packet["identification"] = identification_edit
+        self.ip_packet["id"] = id_edit
         self.ip_packet["type_of_service"] = type_of_service_edit
-        self.ip_packet["flags"] = flags_edit
+        self.ip_packet["flags"] = (rb, mf, df)
         self.ip_packet["offset"] = flag_offset_edit
         self.ip_packet["ttl"] = ttl_edit
         self.ip_packet["checksum"] = header_checksum_edit
         self.ip_packet["dst_ip"] = dst_edit
-        # self.ip_packet["dst_mac"] = dst_mac_edit
         self.ip_packet["src_ip"] = src_edit
-        # self.ip_packet["src_mac"] = src_mac_edit
         self.ip_packet["data"] = data
 
         form = QFormLayout()
@@ -539,8 +534,9 @@ class Gui(QWidget):
         form.addRow(ihl_lbl, ihl_edit)
         form.addRow(len_lbl, len_edit)
         form.addRow(type_of_service_lbl, type_of_service_edit)
-        form.addRow(identification_lbl, identification_edit)
-        form.addRow(flags_lbl, flags_edit)
+        form.addRow(id_lbl, id_edit)
+        form.addRow(rb)
+        form.addRow(mf, df)
         form.addRow(flag_offset_lbl, flag_offset_edit)
         form.addRow(ttl_lbl, ttl_edit)
         form.addRow(header_checksum_checkbox, header_checksum_edit)
@@ -548,10 +544,6 @@ class Gui(QWidget):
         form.addRow(src_edit)
         form.addRow(dst_lbl)
         form.addRow(dst_edit)
-        # form.addRow(src_mac_lbl)
-        # form.addRow(src_mac_edit)
-        # form.addRow(dst_mac_lbl)
-        # form.addRow(dst_mac_edit)
         form.addRow(data)
 
         widget.setLayout(form)
