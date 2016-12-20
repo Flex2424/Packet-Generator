@@ -511,9 +511,9 @@ class Gui(QWidget):
         if protocol_dict["it_is"] == "tcp":
             self.load_tcp(protocol_dict)
         elif protocol_dict["it_is"] == "icmp":
-            self.load_icmp()
+            self.load_icmp(protocol_dict)
         elif protocol_dict["it_is"] == "udp":
-            self.load_udp()
+            self.load_udp(protocol_dict)
 
 
     def load_tcp(self, protocol_dict):
@@ -555,12 +555,51 @@ class Gui(QWidget):
 
 
 
-    def load_icmp(self):
-        pass
+    def load_icmp(self, protocol_dict):
+        if protocol_dict["code"] != None:
+            self.icmp_packet["code"].setText(
+                str(protocol_dict["code"]))
+
+        if protocol_dict["type"] == "echo-request":
+            self.icmp_packet["type"][1].setChecked(True)
+        elif protocol_dict["type"] == "echo-reply":
+            self.icmp_packet["type"][0].setChecked(True)
+
+        if protocol_dict["seq"] != None:
+            self.icmp_packet["seq"].setText(
+                str(protocol_dict["seq"]))
+
+        if protocol_dict["id"] != None:
+            self.icmp_packet["id"].setText(
+                str(protocol_dict["id"]))
+        if protocol_dict["data"] != None:
+            self.icmp_packet["data"].setText(
+                str(protocol_dict["data"]))
+        if protocol_dict["checksum"] != None:
+            self.icmp_packet["checksum"].setText(
+                str(protocol_dict["checksum"]))
 
 
-    def load_udp(self):
-        pass
+    def load_udp(self, protocol_dict):
+        if protocol_dict["sport"] != None:
+            self.udp_packet["sport"].setText(
+                str(protocol_dict["dport"]))
+
+        if protocol_dict["dport"] != None:
+            self.udp_packet["dport"].setText(
+                str(protocol_dict["dport"]))
+
+        if protocol_dict["len"] != None:
+            self.udp_packet["len"].setText(
+                str(protocol_dict["len"]))
+
+        if protocol_dict["checksum"] != None:
+            self.udp_packet["checksum"].setText(
+                str(protocol_dict["checksum"]))
+
+        if protocol_dict["data"] != None:
+            self.udp_packet["data"].setText(
+                str(protocol_dict["data"]))
 
 
     def settings_tab(self):
