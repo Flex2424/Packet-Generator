@@ -311,7 +311,6 @@ class Gui(QWidget):
             "urgent": None,
             "data": None
             }
-        print "was here0"
 
         FIN = 0x01
         SYN = 0x02
@@ -321,8 +320,6 @@ class Gui(QWidget):
         URG = 0x20
         ECE = 0x40
         CWR = 0x80
-
-        print "was here"
 
         if self.tcp_packet["sport"].text() != "":
             tcp["sport"] = int(self.tcp_packet["sport"].text())
@@ -439,12 +436,15 @@ class Gui(QWidget):
             elif self.current_tab == 1:
                 ip_dict = self.packing_ip()[1]
                 protocol_dict = self.packing_icmp()[1]
+                protocol_dict["it_is"] = "icmp"
             elif self.current_tab == 2:
                 ip_dict = self.packing_ip()[1]
                 protocol_dict = self.packing_tcp()[1]
+                protocol_dict["it_is"] = "tcp"
             elif self.current_tab == 3:
-                ip_dict = self.packing_udp()[1]
-                protocol_dict = self.packing_icmp()[1]
+                ip_dict = self.packing_ip()[1]
+                protocol_dict = self.packing_udp()[1]
+                protocol_dict["it_is"] = "udp"
 
             two_dicts = [ip_dict, protocol_dict]
 
@@ -469,12 +469,98 @@ class Gui(QWidget):
             input_name = QFileDialog.getOpenFileName(self, 'Open Packet', '.\packets')[0]
             with open(input_name, "rb") as myFile:
                 ip_dict, protocol_dict = pickle.load(myFile)
-
         for key, value in ip_dict.items():
-            print key, "=>", value
-        print
+            try:
+                print key, value
+            except:
+                print key, value
+        print "-----------------"
         for key, value in protocol_dict.items():
-            print key, "=>", value
+            try:
+                print key, value
+            except:
+                print key, value
+
+        self.ip_packet["version"].setText(str(ip_dict["version"]))
+        if ip_dict["ihl"] != None:
+            self.ip_packet["ihl"].setText(str(ip_dict["ihl"]))
+        if ip_dict["len"] != None:
+            self.ip_packet["len"].setText(str(ip_dict["len"]))
+        if ip_dict["id"] != None:
+            self.ip_packet["id"].setText(str(ip_dict["id"]))
+        if ip_dict["offset"] != None:
+            self.ip_packet["offset"].setText(str(ip_dict["offset"]))
+        if ip_dict["ttl"] != None:
+            self.ip_packet["ttl"].setText(str(ip_dict["ttl"]))
+        if ip_dict["flags"] == 0:
+            self.ip_packet["flags"][0].setChecked(True)
+        elif ip_dict["flags"] == 1:
+            self.ip_packet["flags"][1].setChecked(True)
+        elif ip_dict["flags"] == 2:
+            self.ip_packet["flags"][2].setChecked(True)
+        if ip_dict["checksum"] != None:
+            self.ip_packet["checksum"].setText(str(ip_dict["checksum"]))
+        if ip_dict["src_ip"] != None:
+            self.ip_packet["src_ip"].setText(ip_dict["src_ip"])
+        if ip_dict["dst_ip"] != None:
+            self.ip_packet["dst_ip"].setText(ip_dict["dst_ip"])
+
+        if len(protocol_dict) == 0:
+            return
+
+        if protocol_dict["it_is"] == "tcp":
+            self.load_tcp(protocol_dict)
+        elif protocol_dict["it_is"] == "icmp":
+            self.load_icmp()
+        elif protocol_dict["it_is"] == "udp":
+            self.load_udp()
+
+
+    def load_tcp(self, protocol_dict):
+        if protocol_dict["sport"] != None:
+            self.tcp_packet["sport"].setText(
+                str(protocol_dict["dport"]))
+
+        if protocol_dict["dport"] != None:
+            self.tcp_packet["dport"].setText(
+                str(protocol_dict["dport"]))
+
+        if protocol_dict["seq"] != None:
+            self.tcp_packet["seq"].setText(
+                str(protocol_dict["seq"]))
+
+        if protocol_dict["ack_num"] != None:
+            self.tcp_packet["ack_num"].setText(
+                str(protocol_dict["ack_num"]))
+        if protocol_dict["reserved_bits"] != None:
+            self.tcp_packet["reserved_bits"].setText(
+                str(protocol_dict["reserved_bits"]))
+
+        if protocol_dict["win_size"] != None:
+            self.tcp_packet["win_size"].setText(
+                str(protocol_dict["win_size"]))
+
+        if protocol_dict["checksum"] != None:
+            self.tcp_packet["checksum"].setText(
+                str(protocol_dict["checksum"]))
+
+        if protocol_dict["urgent"] != None:
+            self.tcp_packet["urgent"].setText(
+                str(protocol_dict["urgent"]))
+
+        if protocol_dict["data"] != None:
+            self.tcp_packet["data"].setText(
+                str(protocol_dict["data"]))
+
+
+
+
+    def load_icmp(self):
+        pass
+
+
+    def load_udp(self):
+        pass
 
 
     def settings_tab(self):
@@ -523,25 +609,21 @@ class Gui(QWidget):
         ip_lbl.setFont(font)
         ip_lbl.setAlignment(Qt.AlignCenter)
         # verison
-        version_lbl = QLabel("Version")
         version_edit = QLineEdit()
         version_edit.setValidator(QIntValidator())
         version_edit.setMaxLength(1)
         version_edit.setFixedWidth(20)
         # header length
-        ihl_lbl = QLabel("IHL")
         ihl_edit = QLineEdit()
         ihl_edit.setValidator(QIntValidator())
         ihl_edit.setMaxLength(2)
         ihl_edit.setFixedWidth(30)
         # total length
-        len_lbl = QLabel("Total length")
         len_edit = QLineEdit()
         len_edit.setValidator(QIntValidator())
         len_edit.setMaxLength(5)
         len_edit.setFixedWidth(45)
         # identification
-        id_lbl = QLabel("ID")
         id_edit = QLineEdit()
         id_edit.setFixedWidth(45)
         id_edit.setValidator(QIntValidator())
@@ -556,11 +638,9 @@ class Gui(QWidget):
         mf = QCheckBox("MF")
         df = QCheckBox("DF")
         # flag offset
-        flag_offset_lbl = QLabel("Flag offset")
         flag_offset_edit = QLineEdit()
         flag_offset_edit.setFixedWidth(45)
         # TTL
-        ttl_lbl = QLabel("TTL")
         ttl_edit = QLineEdit()
         ttl_edit.setValidator(QIntValidator(0, 255))
         ttl_edit.setMaxLength(3)
@@ -574,10 +654,8 @@ class Gui(QWidget):
             self.callbackChecksum(header_checksum_checkbox, header_checksum_edit)
             )
         #source, destination ip
-        src_lbl = QLabel("Source IP")
         src_edit = QLineEdit()
         src_edit.setFixedWidth(100)
-        dst_lbl = QLabel("Destination IP")
         dst_edit = QLineEdit()
         dst_edit.setFixedWidth(100)
         ip_reg = QRegExp("[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}")
@@ -601,19 +679,19 @@ class Gui(QWidget):
 
         form = QFormLayout()
         form.addRow(ip_lbl)
-        form.addRow(version_lbl, version_edit)
-        form.addRow(ihl_lbl, ihl_edit)
+        form.addRow(QLabel("Version"), version_edit)
+        form.addRow(QLabel("IHL"), ihl_edit)
         form.addRow(QLabel("Type Of Service"), type_of_service)
-        form.addRow(len_lbl, len_edit)
-        form.addRow(id_lbl, id_edit)
+        form.addRow(QLabel("Total length"), len_edit)
+        form.addRow(QLabel("ID"), id_edit)
         form.addRow(rb)
         form.addRow(mf, df)
-        form.addRow(flag_offset_lbl, flag_offset_edit)
-        form.addRow(ttl_lbl, ttl_edit)
+        form.addRow(QLabel("Flag offset"), flag_offset_edit)
+        form.addRow(QLabel("TTL"), ttl_edit)
         form.addRow(header_checksum_checkbox, header_checksum_edit)
-        form.addRow(src_lbl)
+        form.addRow(QLabel("Source IP"))
         form.addRow(src_edit)
-        form.addRow(dst_lbl)
+        form.addRow(QLabel("Destination IP"))
         form.addRow(dst_edit)
         form.addRow(data)
 
@@ -645,7 +723,6 @@ class Gui(QWidget):
         echo_reply_lbl = QCheckBox("echo-reply")
         echo_request_lbl = QCheckBox("echo-request")
         # code
-        code_lbl = QLabel("Code")
         code_edit = QLineEdit()
         code_edit.setValidator(QIntValidator())
         code_edit.setFixedWidth(45)
@@ -658,13 +735,11 @@ class Gui(QWidget):
             self.callbackChecksum(checksum_checkbox, checksum_edit)
             )
         # id
-        id_lbl = QLabel("Identificator")
         id_edit = QLineEdit()
         id_edit = QLineEdit()
         id_edit.setValidator(QIntValidator())
         id_edit.setFixedWidth(45)
         # seq
-        seq_lbl = QLabel("Seq")
         seq_edit = QLineEdit()
         seq_edit = QLineEdit()
         seq_edit.setValidator(QIntValidator())
@@ -679,13 +754,18 @@ class Gui(QWidget):
         self.icmp_packet["seq"] = seq_edit
         self.icmp_packet["data"] = data
 
+        # self.gui_icmp = {
+        # "type": (echo_reply_lbl, echo_request_lbl),
+        # "code": 
+        # }
+
 
         form = QFormLayout()
         form.addRow(echo_reply_lbl, echo_request_lbl)
-        form.addRow(code_lbl, code_edit)
+        form.addRow(QLabel("Code"), code_edit)
         form.addRow(checksum_checkbox, checksum_edit)
-        form.addRow(id_lbl, id_edit)
-        form.addRow(seq_lbl, seq_edit)
+        form.addRow(QLabel("Identificator"), id_edit)
+        form.addRow(QLabel("Seq"), seq_edit)
         form.addRow(data)
         widget.setLayout(form)
         return widget
