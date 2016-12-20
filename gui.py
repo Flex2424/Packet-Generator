@@ -3,11 +3,12 @@
 import sys
 from PyQt5.QtWidgets import (QApplication, QWidget, QTabWidget, QLabel, QDesktopWidget, QGridLayout, 
                 QPushButton, QFileDialog, QComboBox, QLineEdit, QCheckBox, QTextEdit,
-                QFormLayout, QGroupBox, QVBoxLayout, QLCDNumber, QSlider)
+                QFormLayout, QGroupBox, QVBoxLayout, QListWidget, QInputDialog)
 from PyQt5.QtGui import (QIcon, QIntValidator, QRegExpValidator, QFont, QPixmap)
 from PyQt5.QtCore import (QRegExp, Qt)
 import wmi
 from scapy.all import *
+import pickle
 
 
 class Gui(QWidget):
@@ -191,7 +192,7 @@ class Gui(QWidget):
                 dst=ip["dst_ip"]
                 )
 
-        return ip_full
+        return ip_full, ip
 
 
     def packing_icmp(self):
@@ -251,7 +252,7 @@ class Gui(QWidget):
                 seq=icmp["seq"]
             )
 
-        return icmp_full
+        return icmp_full, icmp
 
 
     def packing_udp(self):
@@ -292,7 +293,7 @@ class Gui(QWidget):
                 chksum=udp["checksum"]
                 )
 
-        return udp_full
+        return udp_full, udp
 
 
     def packing_tcp(self):
@@ -405,46 +406,78 @@ class Gui(QWidget):
                 urgptr=tcp["urgent"]
                 )
 
-        return tcp_full
+        return tcp_full, tcp
 
 
     def send_packet(self):
-        ip_full = self.packing_ip()
+        ip_full = self.packing_ip()[0]
         protocol = None
         if self.current_tab == 0:
             main_packet = ip_full
-            sendp(Ether()/(main_packet))
+            send(main_packet)
             print main_packet.show()
             return
         elif self.current_tab == 1:
-            protocol = self.packing_icmp()
+            protocol = self.packing_icmp()[0]
         elif self.current_tab == 2:
-            protocol = self.packing_tcp()
+            protocol = self.packing_tcp()[0]
         elif self.current_tab == 3:
-            protocol = self.packing_udp()
+            protocol = self.packing_udp()[0]
         main_packet = ip_full/protocol
         send(main_packet)
         print main_packet.show()
 
 
+    def save_packet(self):
+        text, ok = QInputDialog.getText(self, 'Packet Name',
+            'Enter a filename:')
+        if ok:
+            if self.current_tab == 0:
+                ip_dict = self.packing_ip()[1]
+                protocol_dict = {}
+            elif self.current_tab == 1:
+                ip_dict = self.packing_ip()[1]
+                protocol_dict = self.packing_icmp()[1]
+            elif self.current_tab == 2:
+                ip_dict = self.packing_ip()[1]
+                protocol_dict = self.packing_tcp()[1]
+            elif self.current_tab == 3:
+                ip_dict = self.packing_udp()[1]
+                protocol_dict = self.packing_icmp()[1]
+
+            two_dicts = [ip_dict, protocol_dict]
+
+            with open("packets/{0}.txt".format(text), "wb") as myFile:
+                pickle.dump(two_dicts, myFile)
+        else:
+            print "not ok in save_packet func, man"
+
+
+    def load_packet(self):
+        with open("packets/privet.txt", "rb") as myFile:
+            ip_dict, protocol_dict = pickle.load(myFile)
+
+        for key, value in ip_dict.items():
+            print key, "=>", value
+        print
+        for key, value in protocol_dict.items():
+            print key, "=>", value
+
+
     def settings_tab(self):
         widget = QWidget(self)
-        # delay
-        lcd = QLCDNumber()
-        sld = QSlider(Qt.Horizontal)
-        sld.valueChanged.connect(lcd.display)
         #buttons
         load_btn = QPushButton("Load")
+        load_btn.clicked.connect(self.load_packet)
         send_btn = QPushButton("Send")
         send_btn.clicked.connect(self.send_packet)
         save_btn = QPushButton("Save")
+        save_btn.clicked.connect(self.save_packet)
         #list
-        list_edit = QTextEdit()
+        packet_list = QListWidget()
 
         form = QFormLayout()
-        form.addRow(lcd)
-        form.addRow(sld)
-        form.addRow(list_edit)
+        form.addRow(packet_list)
         form.addRow(load_btn)
         form.addRow(save_btn, send_btn)
         widget.setLayout(form)
