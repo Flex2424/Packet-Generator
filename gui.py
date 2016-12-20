@@ -3,7 +3,7 @@
 import sys
 from PyQt5.QtWidgets import (QApplication, QWidget, QTabWidget, QLabel, QDesktopWidget, QGridLayout, 
                 QPushButton, QFileDialog, QComboBox, QLineEdit, QCheckBox, QTextEdit,
-                QFormLayout, QGroupBox, QVBoxLayout, QListWidget, QInputDialog)
+                QFormLayout, QGroupBox, QVBoxLayout, QListWidget, QInputDialog, QListWidgetItem)
 from PyQt5.QtGui import (QIcon, QIntValidator, QRegExpValidator, QFont, QPixmap)
 from PyQt5.QtCore import (QRegExp, Qt)
 import wmi
@@ -27,6 +27,7 @@ class Gui(QWidget):
         # 0 - ip, 1 - icmp, 2 - tcp, 3 - udp
         self.current_tab = 0
         self.tos_bit = None
+        self.selected_packet = ""
         #ComboBox
         interfaces = QComboBox(self)
         list_interfaces = self.get_interfaces()[0]
@@ -449,13 +450,25 @@ class Gui(QWidget):
 
             with open("packets/{0}.txt".format(text), "wb") as myFile:
                 pickle.dump(two_dicts, myFile)
+
+            item = QListWidgetItem()
+            item.setText(text)
+            self.packet_list.addItem(item)
         else:
             print "not ok in save_packet func, man"
 
 
     def load_packet(self):
-        with open("packets/privet.txt", "rb") as myFile:
-            ip_dict, protocol_dict = pickle.load(myFile)
+        ip_dict = {}
+        protocol_dict = {}
+        if self.selected_packet != "":
+            name = str(self.selected_packet)
+            with open("packets/{0}.txt".format(name), "rb") as myFile:
+                ip_dict, protocol_dict = pickle.load(myFile)
+        else:
+            input_name = QFileDialog.getOpenFileName(self, 'Open Packet', '.\packets')[0]
+            with open(input_name, "rb") as myFile:
+                ip_dict, protocol_dict = pickle.load(myFile)
 
         for key, value in ip_dict.items():
             print key, "=>", value
@@ -474,14 +487,18 @@ class Gui(QWidget):
         save_btn = QPushButton("Save")
         save_btn.clicked.connect(self.save_packet)
         #list
-        packet_list = QListWidget()
-
+        self.packet_list = QListWidget()
+        self.packet_list.itemDoubleClicked.connect(self.item_selected)
         form = QFormLayout()
-        form.addRow(packet_list)
+        form.addRow(self.packet_list)
         form.addRow(load_btn)
         form.addRow(save_btn, send_btn)
         widget.setLayout(form)
         return widget
+
+
+    def item_selected(self, item):
+        self.selected_packet = item.text()
 
 
     def ip_left_tab(self):
