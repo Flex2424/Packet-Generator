@@ -505,12 +505,42 @@ class Gui(QWidget):
             self.ip_packet["offset"].setText(str(ip_dict["offset"]))
         if ip_dict["ttl"] != None:
             self.ip_packet["ttl"].setText(str(ip_dict["ttl"]))
-        if ip_dict["flags"] == 0:
-            self.ip_packet["flags"][0].setChecked(True)
-        elif ip_dict["flags"] == 1:
-            self.ip_packet["flags"][1].setChecked(True)
-        elif ip_dict["flags"] == 2:
-            self.ip_packet["flags"][2].setChecked(True)
+        if ip_dict["flags"] == 0x00:
+            self.ip_packet["RESERVED"].setChecked(False)
+            self.ip_packet["MF"].setChecked(False)
+            self.ip_packet["DF"].setChecked(False)
+        if ip_dict["flags"] == 0x01:
+            self.ip_packet["RESERVED"].setChecked(False)
+            self.ip_packet["MF"].setChecked(True)
+            self.ip_packet["DF"].setChecked(False)
+        if ip_dict["flags"] == 0x02:
+            self.ip_packet["RESERVED"].setChecked(False)
+            self.ip_packet["MF"].setChecked(False)
+            self.ip_packet["DF"].setChecked(True)
+        if ip_dict["flags"] == 0x03:
+            self.ip_packet["RESERVED"].setChecked(False)
+            self.ip_packet["MF"].setChecked(True)
+            self.ip_packet["DF"].setChecked(True)
+        if ip_dict["flags"] == 0x04:
+            self.ip_packet["RESERVED"].setChecked(True)
+            self.ip_packet["MF"].setChecked(False)
+            self.ip_packet["DF"].setChecked(True)
+        if ip_dict["flags"] == 0x05:
+            self.ip_packet["RESERVED"].setChecked(True)
+            self.ip_packet["MF"].setChecked(True)
+            self.ip_packet["DF"].setChecked(False)
+        if ip_dict["flags"] == 0x06:
+            self.ip_packet["RESERVED"].setChecked(True)
+            self.ip_packet["MF"].setChecked(False)
+            self.ip_packet["DF"].setChecked(True)
+        if ip_dict["flags"] == 0x07:
+            self.ip_packet["RESERVED"].setChecked(True)
+            self.ip_packet["MF"].setChecked(True)
+            self.ip_packet["DF"].setChecked(True)    
+        # elif ip_dict["flags"] == 1:
+        #     self.ip_packet["flags"][1].setChecked(True)
+        # elif ip_dict["flags"] == 2:
+        #     self.ip_packet["flags"][2].setChecked(True)
         if ip_dict["checksum"] != None:
             self.ip_packet["checksum"].setText(str(ip_dict["checksum"]))
         if ip_dict["src_ip"] != None:
@@ -537,9 +567,9 @@ class Gui(QWidget):
         self.ip_packet["id"].setText(value)
         self.ip_packet["offset"].setText(value)
         self.ip_packet["ttl"].setText(value)
-        self.ip_packet["flags"][0].setChecked(False)
-        self.ip_packet["flags"][1].setChecked(False)
-        self.ip_packet["flags"][2].setChecked(False)
+        self.ip_packet["RESERVED"].setChecked(False)
+        self.ip_packet["MF"].setChecked(False)
+        self.ip_packet["DF"].setChecked(False)
         self.ip_packet["checksum"].setText(value)
         self.ip_packet["src_ip"].setText(value)
         self.ip_packet["dst_ip"].setText(value)
