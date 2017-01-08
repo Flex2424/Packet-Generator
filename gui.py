@@ -80,7 +80,7 @@ class Gui(QWidget):
             "len": None,
             "id": None,
             "type_of_service": None,
-            "flags": None,
+            "flags": 0,
             "offset": None,
             "ttl": None,
             "checksum": None,
@@ -88,6 +88,10 @@ class Gui(QWidget):
             "src_ip": None,
             "data": None
             }
+
+        MF = 0x01
+        DF = 0x02
+        RESERVED = 0x04
 
         if self.ip_packet["version"].text() != "":
             ip["version"] = 4
@@ -128,12 +132,19 @@ class Gui(QWidget):
         else:
             ip["id"] = 1
 
-        if self.ip_packet["flags"][0].checkState() != 0:
-            ip["flags"] = 0
-        elif self.ip_packet["flags"][1].checkState() != 0:
-            ip["flags"] = 1
-        elif self.ip_packet["flags"][2].checkState() != 0:
-            ip["flags"] = 2
+        if self.ip_packet["RESERVED"].checkState() == 2:
+            ip["flags"] += RESERVED
+        if self.ip_packet["DF"].checkState() == 2:
+            ip["flags"] += DF
+        if self.ip_packet["MF"].checkState() == 2:
+            ip["flags"] += MF
+
+        # if self.ip_packet["flags"][0].checkState() != 0:
+        #     ip["flags"] = 0
+        # elif self.ip_packet["flags"][1].checkState() != 0:
+        #     ip["flags"] = 1
+        # elif self.ip_packet["flags"][2].checkState() != 0:
+        #     ip["flags"] = 2
 
         if self.ip_packet["offset"].text() != "":
             ip["offset"] = long(self.ip_packet["offset"].text())
@@ -481,6 +492,8 @@ class Gui(QWidget):
             except:
                 print key, value
 
+        self.clear_ip_fields()
+
         self.ip_packet["version"].setText(str(ip_dict["version"]))
         if ip_dict["ihl"] != None:
             self.ip_packet["ihl"].setText(str(ip_dict["ihl"]))
@@ -514,6 +527,23 @@ class Gui(QWidget):
             self.load_icmp(protocol_dict)
         elif protocol_dict["it_is"] == "udp":
             self.load_udp(protocol_dict)
+
+
+    def clear_ip_fields(self):
+        value = ""
+        self.ip_packet["version"].setText(value)
+        self.ip_packet["ihl"].setText(value)
+        self.ip_packet["len"].setText(value)
+        self.ip_packet["id"].setText(value)
+        self.ip_packet["offset"].setText(value)
+        self.ip_packet["ttl"].setText(value)
+        self.ip_packet["flags"][0].setChecked(False)
+        self.ip_packet["flags"][1].setChecked(False)
+        self.ip_packet["flags"][2].setChecked(False)
+        self.ip_packet["checksum"].setText(value)
+        self.ip_packet["src_ip"].setText(value)
+        self.ip_packet["dst_ip"].setText(value)
+        
 
 
     def load_tcp(self, protocol_dict):
@@ -633,7 +663,10 @@ class Gui(QWidget):
         "len": None,
         "id": None,
         "type_of_service": None,
-        "flags": None,
+        #"flags": None,
+        "RESERVED": None,
+        "MF": None,
+        "DF": None,
         "offset": None,
         "ttl": None,
         "checksum": None,
@@ -673,9 +706,9 @@ class Gui(QWidget):
         type_of_service.addItems(tmp_lst)
         type_of_service.activated[str].connect(self.choose_tos)
         # flags
-        rb = QCheckBox("Reserved")
-        mf = QCheckBox("MF")
-        df = QCheckBox("DF")
+        RESERVED = QCheckBox("RESERVED")
+        MF = QCheckBox("MF")
+        DF = QCheckBox("DF")
         # flag offset
         flag_offset_edit = QLineEdit()
         flag_offset_edit.setFixedWidth(45)
@@ -708,7 +741,9 @@ class Gui(QWidget):
         self.ip_packet["ihl"] = ihl_edit
         self.ip_packet["len"] = len_edit
         self.ip_packet["id"] = id_edit
-        self.ip_packet["flags"] = (rb, mf, df)
+        self.ip_packet["RESERVED"] = RESERVED
+        self.ip_packet["DF"] = DF
+        self.ip_packet["MF"] = MF
         self.ip_packet["offset"] = flag_offset_edit
         self.ip_packet["ttl"] = ttl_edit
         self.ip_packet["checksum"] = header_checksum_edit
@@ -723,8 +758,8 @@ class Gui(QWidget):
         form.addRow(QLabel("Type Of Service"), type_of_service)
         form.addRow(QLabel("Total length"), len_edit)
         form.addRow(QLabel("ID"), id_edit)
-        form.addRow(rb)
-        form.addRow(mf, df)
+        form.addRow(RESERVED)
+        form.addRow(MF, DF)
         form.addRow(QLabel("Flag offset"), flag_offset_edit)
         form.addRow(QLabel("TTL"), ttl_edit)
         form.addRow(header_checksum_checkbox, header_checksum_edit)
@@ -792,12 +827,6 @@ class Gui(QWidget):
         self.icmp_packet["id"] = id_edit
         self.icmp_packet["seq"] = seq_edit
         self.icmp_packet["data"] = data
-
-        # self.gui_icmp = {
-        # "type": (echo_reply_lbl, echo_request_lbl),
-        # "code": 
-        # }
-
 
         form = QFormLayout()
         form.addRow(echo_reply_lbl, echo_request_lbl)
@@ -991,7 +1020,6 @@ class Gui(QWidget):
         return widget
 
 
-
     #for ComboBox
     def onActivated(self, text):
         names = self.get_interfaces()[0]
@@ -1007,7 +1035,6 @@ class Gui(QWidget):
         self.tos_bit = text
 
 
-
     def get_interfaces(self):
         c = wmi.WMI()
         intefsc = []
@@ -1019,17 +1046,6 @@ class Gui(QWidget):
             mac.append(interface.MACAddress)
         return intefsc, ip, mac
             
-
-    # def showDialog(self):
-    #     filename = QFileDialog.getFileOpen(self, "Open File", "c://")
-
-    #     f = open(fname, 'r')
-        
-    #     with f:        
-    #         data = f.read()
-    #         self.textEdit.setText(data) 
-
-
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     ex = Gui()
